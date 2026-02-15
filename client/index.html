@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moex Stream Analyzer</title>
+    <style>ф
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #2c3e50);
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 16px;
+            background: rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #00c6ff, #0072ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 10px rgba(0, 198, 255, 0.3);
+        }
+        .status {
+            display: inline-block;
+            padding: 8px 24px;
+            border-radius: 30px;
+            font-weight: bold;
+            margin-top: 12px;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+        }
+        .status-ok { 
+            background: linear-gradient(45deg, #00c853, #00e676); 
+            color: white;
+            box-shadow: 0 0 15px rgba(0, 200, 83, 0.5);
+        }
+        .status-error { 
+            background: linear-gradient(45deg, #ff1744, #ff5252); 
+            color: white;
+            box-shadow: 0 0 15px rgba(255, 23, 68, 0.5);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .card {
+            background: rgba(30, 40, 70, 0.7);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            border-color: rgba(0, 198, 255, 0.3);
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        .ticker {
+            font-size: 2.2em;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00c6ff, #0072ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .price {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 15px 0;
+            transition: color 0.3s ease;
+        }
+        .price-up { color: #00e676; }
+        .price-down { color: #ff5252; }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 1.05em;
+        }
+        .metric-label {
+            color: #aaa;
+            font-size: 0.95em;
+        }
+        .metric-value {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .rsi-high { color: #ff5252; font-weight: bold; }
+        .rsi-low { color: #00e676; font-weight: bold; }
+        .signal {
+            background: rgba(0, 122, 255, 0.15);
+            border-left: 4px solid #007aff;
+            padding: 12px;
+            border-radius: 0 8px 8px 0;
+            margin-top: 15px;
+            font-size: 0.95em;
+            line-height: 1.4;
+        }
+        .signal-item {
+            display: inline-block;
+            background: rgba(0, 198, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 12px;
+            margin: 3px;
+            font-size: 0.9em;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #888;
+            font-size: 0.95em;
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #no-data {
+            display: block;
+        }
+        #container.show-data #no-data {
+            display: none;
+        }
+        #container.show-data .card {
+            display: block;
+        }
+        .card {
+            display: none;
+        }
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+            h1 { font-size: 2.2em; }
+            .price { font-size: 2.0em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ Moex Stream Analyzer</h1>
+        <div id="status" class="status status-error">Подключение к стриму...</div>
+    </div>
+    
+    <div class="grid" id="container">
+        <!-- Тикеры появятся здесь -->
+    </div>
+
+    <div id="no-data" style="text-align: center; padding: 60px 20px; color: #888;">
+        <h2 style="font-size: 2em; margin-bottom: 20px; opacity: 0.7;">⏳ Ожидание данных...</h2>
+        <p style="font-size: 1.2em; margin-bottom: 15px;">Сервер подключен к потоку анализа</p>
+        <p style="font-size: 1em; margin-bottom: 30px; opacity: 0.8;">
+            Данные должны появиться в течение 10-15 секунд после запуска генератора и Flink job
+        </p>
+        <div style="background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px; display: inline-block;">
+            <p style="margin: 8px 0; font-size: 0.95em;">
+                <strong>Проверьте:</strong>
+            </p>
+            <p style="margin: 8px 0; font-size: 0.9em; text-align: left; padding-left: 20px;">
+                • Запущен ли генератор данных (генератор → moex_raw_quotes)<br>
+                • Запущен ли Flink job (обработка → moex_indicators)<br>
+                • Созданы ли топики в Kafka
+            </p>
+        </div>
+    </div>
+
+    
+    <div class="footer">
+        <p>Потоковый анализ котировок Московской биржи • Flink 1.15.4 • Kafka</p>
+        <p>Данные обновляются каждые 10 секунд (размер окна обработки)</p>
+    </div>
+
+    <script>
+        const container = document.getElementById('container');
+        const statusEl = document.getElementById('status');
+        const cards = {};
+        
+        // Подключение к веб-сокету
+        const ws = new WebSocket(`ws://${location.host}/ws`);
+        
+        ws.onopen = () => {
+            console.log('✅ WebSocket подключен');
+            statusEl.className = 'status status-ok';
+            statusEl.textContent = '✅ Подключено к стриму анализа';
+        };
+        
+        ws.onclose = () => {
+            console.log('❌ WebSocket отключен');
+            statusEl.className = 'status status-error';
+            statusEl.textContent = '❌ Отключено от стрима';
+            setTimeout(() => location.reload(), 3000);
+        };
+        
+        ws.onerror = (error) => {
+            console.error('WebSocket ошибка:', error);
+        };
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            updateTicker(data);
+        };
+        
+        function createCard(ticker) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="ticker">${ticker}</div>
+                    <div class="price" id="price-${ticker}">--.--</div>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">SMA (5)</span>
+                    <span class="metric-value" id="sma5-${ticker}">--.--</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">SMA (20)</span>
+                    <span class="metric-value" id="sma20-${ticker}">--.--</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">RSI (14)</span>
+                    <span class="metric-value" id="rsi-${ticker}">--.--</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Волатильность</span>
+                    <span class="metric-value" id="volatility-${ticker}">--.--%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Объем</span>
+                    <span class="metric-value" id="volume-${ticker}">--</span>
+                </div>
+                <div class="signal" id="signals-${ticker}">
+                    <div class="signal-title">💡 Сигналы:</div>
+                    <div id="signal-list-${ticker}"></div>
+                </div>
+            `;
+            container.appendChild(card);
+            return card;
+        }
+        
+        function updateTicker(data) {
+            const ticker = data.ticker;
+            if (!cards[ticker]) {
+                cards[ticker] = createCard(ticker);
+                // Скрыть сообщение "Ожидание данных" при первом тикере
+                if (Object.keys(cards).length === 1) {
+                    container.classList.add('show-data');
+                }
+            }
+            
+            const card = cards[ticker];
+            const prevPrice = parseFloat(card.querySelector(`#price-${ticker}`).textContent) || data.price;
+            const isUp = data.price > prevPrice;
+            
+            // Обновление цены
+            const priceEl = card.querySelector(`#price-${ticker}`);
+            priceEl.textContent = data.price.toFixed(2);
+            priceEl.className = `price ${isUp ? 'price-up' : 'price-down'}`;
+            
+            // Остальные метрики
+            card.querySelector(`#sma5-${ticker}`).textContent = data.sma_5.toFixed(2);
+            card.querySelector(`#sma20-${ticker}`).textContent = data.sma_20.toFixed(2);
+            
+            // RSI с цветовой индикацией
+            const rsiEl = card.querySelector(`#rsi-${ticker}`);
+            rsiEl.textContent = data.rsi.toFixed(1);
+            rsiEl.className = 'metric-value';
+            if (data.rsi > 70) rsiEl.classList.add('rsi-high');
+            else if (data.rsi < 30) rsiEl.classList.add('rsi-low');
+            
+            card.querySelector(`#volatility-${ticker}`).textContent = `${data.volatility.toFixed(2)}%`;
+            card.querySelector(`#volume-${ticker}`).textContent = formatVolume(data.volume);
+            
+            // Сигналы
+            const signalList = card.querySelector(`#signal-list-${ticker}`);
+            signalList.innerHTML = '';
+            if (data.signals && data.signals.summary) {
+                data.signals.summary.forEach(signal => {
+                    const item = document.createElement('span');
+                    item.className = 'signal-item';
+                    item.textContent = signal;
+                    signalList.appendChild(item);
+                });
+            }
+        }
+        
+        function formatVolume(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+    </script>
+</body>
+</html>

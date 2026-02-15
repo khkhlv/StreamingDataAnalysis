@@ -1,0 +1,70 @@
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    ports:
+      - "9092:9092"   # Для клиентов внутри контейнеров (например, Flink)
+      - "9093:9093"   # Для клиентов с хоста (локально)
+    environment:
+      CLUSTER_ID: "4L6g3mJrT2qD7X9vZ1yN8w"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      
+      # Слушатели:
+      # - PLAINTEXT:9092 — для внутренних клиентов
+      # - PLAINTEXT_HOST:9093 — для клиентов с хоста
+      # - CONTROLLER:9094 — для внутренней коммуникации контроллера
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9094,PLAINTEXT_HOST://0.0.0.0:9093"
+      
+      # Рекламируемые адреса (то, что брокер сообщает клиентам):
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,PLAINTEXT_HOST://127.0.0.1:9093"
+      # Имя слушателя для межброкерной коммуникации
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      
+      # Контроллер
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9094"
+      
+      # Прочие настройки
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms128M"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Flink JobManager
+  jobmanager:
+    image: ghcr.io/lakehq/flink:1.19.0-python3.11
+    container_name: flink-jobmanager
+    ports:
+      - "8081:8081"   # Веб-интерфейс Flink
+    command: jobmanager
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: jobmanager
+      PYFLINK_CLIENT_EXECUTABLE: "/usr/local/bin/python3.11"
+      FLINK_PROPERTIES: |
+        classloader.resolve-order: parent-first
+    volumes:
+      # Монтируем коннектор Kafka напрямую в папку lib
+      - ./flink/flink-sql-connector-kafka-3.2.0-1.19.jar:/opt/flink/lib/flink-sql-connector-kafka-3.2.0-1.19.jar
+
+  # Flink TaskManager
+  taskmanager:
+    image: ghcr.io/lakehq/flink:1.19.0-python3.11
+    container_name: flink-taskmanager
+    depends_on:
+      - jobmanager
+    command: taskmanager
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: jobmanager
+      TASK_MANAGER_NUMBER_OF_TASK_SLOTS: 2
+    volumes:
+      # Монтируем коннектор Kafka напрямую в папку lib
+      - ./flink/flink-sql-connector-kafka-3.2.0-1.19.jar:/opt/flink/lib/flink-sql-connector-kafka-3.2.0-1.19.jar
