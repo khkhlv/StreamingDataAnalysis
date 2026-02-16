@@ -71,18 +71,16 @@
 ## Инструкция к запуску
 
 # Шаг 1: Запуск инфраструктуры
-docker-compose up -d
+docker compose up -d
 
-# Шаг 2: Запуск генератора (Терминал 1)
-cd generator
-python kafka_producer.py
+# Шаг 2: Отправка Flink job (Терминал 1)
+./flink/submit-job.sh
 
-# Шаг 3: Отправка Flink job (Терминал 2)
-./submit-job.sh
+# Шаг 3: Запуск генератора (Терминал 2)
+python3 generator/kafka_producer.py
 
 # Шаг 4: Запуск клиента (Терминал 3)
-cd client
-uvicorn main:app --reload
+uvicorn client.app:app --reload
 
 # Шаг 5: Мониторинг
 # Веб-интерфейс Flink: http://localhost:8081

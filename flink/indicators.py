@@ -374,7 +374,7 @@ def run_flink_job():
     env.set_parallelism(1)
     
     # Включение checkpointing для отказоустойчивости
-    env.enable_checkpointing(10000)  # 10 секунд
+    env.enable_checkpointing(3000)  # 3 сек
     
     # === ИСТОЧНИК ИЗ KAFKA (совместимый синтаксис для 1.18 без внешних зависимостей) ===
     kafka_properties = {

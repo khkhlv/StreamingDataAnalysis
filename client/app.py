@@ -8,7 +8,7 @@ from threading import Thread
 import time
 
 app = FastAPI(title="Moex Stream Analyzer")
-templates = Jinja2Templates(directory=".")
+templates = Jinja2Templates(directory="client")
 connections = set()
 event_loop = None
 
