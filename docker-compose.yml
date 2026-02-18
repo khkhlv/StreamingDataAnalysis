@@ -69,3 +69,35 @@ services:
     volumes:
       # Монтируем коннектор Kafka напрямую в папку lib
       - ./bin/flink-sql-connector-kafka-3.2.0-1.19.jar:/opt/flink/lib/flink-sql-connector-kafka-3.2.0-1.19.jar
+
+  generator:
+    image: python:3.11-slim
+    container_name: generator
+    working_dir: /generator
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: >
+      sh -c "pip install -r /requirements.txt && python kafka_producer.py"
+    volumes:
+      - ./generator:/generator
+      - ./requirements.txt:/requirements.txt
+    environment:
+    - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+  client:
+    image: python:3.11-slim
+    container_name: client
+    working_dir: /client
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: >
+      sh -c "pip install -r /requirements.txt && uvicorn app:app --reload --host 0.0.0.0 --port 8000"
+    volumes:
+      - ./client:/client
+      - ./requirements.txt:/requirements.txt
+    ports:
+      - "8000:8000"
+    environment:
+    - KAFKA_BOOTSTRAP_SERVERS=kafka:9092

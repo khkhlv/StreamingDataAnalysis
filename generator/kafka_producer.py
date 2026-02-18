@@ -21,7 +21,7 @@ class SyntheticDataProducer:
     
     def __init__(
         self,
-        bootstrap_servers: str = "localhost:9093",
+        bootstrap_servers: str = "kafka:9092",
         topic: str = "moex_raw_quotes"
     ):
         self.topic = topic
@@ -117,7 +117,7 @@ class SyntheticDataProducer:
         logger.info(f"Генератор остановлен. Всего отправлено: {self.messages_sent:,} сообщений")
     
     @classmethod
-    def create_topics(cls, bootstrap_servers: str = "localhost:9093"):
+    def create_topics(cls, bootstrap_servers: str = "kafka:9092"):
         """Создание топиков Kafka (выполняется один раз при инициализации)"""
         from kafka.admin import KafkaAdminClient, NewTopic
         

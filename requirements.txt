@@ -6,3 +6,6 @@ psycopg2-binary
 fastapi
 uvicorn
 lz4
+jinja2
+websockets
+scikit-learn

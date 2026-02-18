@@ -68,20 +68,17 @@
 - Flink: checkpointing с интервалом 5–10 сек + двухфазный коммит в Kafka
 - Producer: идемпотентные операции с ключами на основе (ticker, timestamp)
 
-## Инструкция к запуску
+## Запуск
 
-# Шаг 1: Запуск инфраструктуры
-docker compose up -d
+Для запуска выполнить команду: docker compose up -d
 
-# Шаг 2: Отправка Flink job (Терминал 1)
-./flink/submit-job.sh
+### API
+**Веб-интерфейс Flink:** http://localhost:8081
 
-# Шаг 3: Запуск генератора (Терминал 2)
-python3 generator/kafka_producer.py
+**Основной дашборд:** http://localhost:8000/
 
-# Шаг 4: Запуск клиента (Терминал 3)
-uvicorn client.app:app --reload
+**Кластерный анализ:** http://localhost:8000/clusters
 
-# Шаг 5: Мониторинг
-# Веб-интерфейс Flink: http://localhost:8081
-# Веб-клиент: http://localhost:8000/
+**Анализ тренда:** http://localhost:8000/trend-forecast
+
+
