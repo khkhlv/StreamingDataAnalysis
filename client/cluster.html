@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кластерный анализ | Moex Stream Analyzer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 25px;
+            border-radius: 20px;
+            background: rgba(0, 30, 60, 0.7);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+        h1 {
+            font-size: 2.8em;
+            margin-bottom: 15px;
+            background: linear-gradient(45deg, #00c6ff, #0072ff, #7e57c2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .status {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            margin-top: 15px;
+            font-weight: bold;
+            background: rgba(0, 198, 255, 0.2);
+        }
+        .chart-container {
+            max-width: 1000px;
+            margin: 0 auto 40px;
+            background: rgba(20, 35, 60, 0.85);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+            position: relative;
+            min-height: 500px;
+        }
+        #cluster-chart {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        .chart-point {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.7em;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+            border: 2px solid white;
+        }
+        .chart-point:hover {
+            transform: scale(1.4);
+            z-index: 10;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.6);
+        }
+        .cluster-0 { background: #FF6B6B; }
+        .cluster-1 { background: #4ECDC4; }
+        .cluster-2 { background: #45B7D1; }
+        .cluster-3 { background: #96CEB4; }
+        .cluster-4 { background: #FFEAA7; }
+        .cluster-5 { background: #A29BFE; }
+        .cluster-6 { background: #FD79A8; }
+        .cluster-7 { background: #6C5CE7; }
+        .cluster-info {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin: 25px 0;
+        }
+        .cluster-card {
+            background: rgba(30, 50, 80, 0.8);
+            border-radius: 16px;
+            padding: 20px;
+            min-width: 180px;
+            text-align: center;
+            border: 2px solid #4a6fa5;
+        }
+        .cluster-title {
+            font-size: 1.4em;
+            margin-bottom: 10px;
+            color: #00c6ff;
+        }
+        .ticker-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .ticker-badge {
+            background: rgba(0, 150, 255, 0.3);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            color: #777;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .back-btn {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 25px;
+            background: linear-gradient(45deg, #00c6ff, #0072ff);
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 198, 255, 0.4);
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #777;
+            font-size: 1.3em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Кластерный анализ поведения тикеров</h1>
+        <div class="status" id="status">Ожидание данных...</div>
+    </div>
+
+    <div class="cluster-info" id="cluster-info"></div>
+
+    <div class="chart-container">
+        <div id="cluster-chart">
+            <div id="loading">Загрузка данных для кластеризации...</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Алгоритм: K-means + PCA | Обновление: каждые 30 секунд</p>
+        <p>Признаки: цена, волатильность, объем, RSI, SMA(5)/SMA(20)</p>
+        <a href="/" class="back-btn">← Вернуться к основному дашборду</a>
+    </div>
+
+    <script>
+        const ws = new WebSocket(`ws://${location.host}/ws/clusters`);
+        const chart = document.getElementById('cluster-chart');
+        const statusEl = document.getElementById('status');
+        const clusterInfo = document.getElementById('cluster-info');
+        const loadingEl = document.getElementById('loading');
+        
+        ws.onopen = () => {
+            console.log('✅ Кластерный WebSocket подключен');
+            statusEl.textContent = 'Подключено к стриму кластеризации';
+            statusEl.style.background = 'rgba(0, 230, 118, 0.2)';
+        };
+        
+        ws.onclose = () => {
+            statusEl.textContent = 'Отключено от стрима';
+            statusEl.style.background = 'rgba(255, 82, 82, 0.2)';
+            setTimeout(() => location.reload(), 5000);
+        };
+        
+        ws.onmessage = (event) => {
+            const msg = JSON.parse(event.data);
+            if (msg.type === "clusters" && msg.data) {
+                renderClusters(msg.data);
+                const now = new Date();
+                statusEl.textContent = `Обновлено: ${now.toLocaleTimeString('ru-RU')}`;
+                statusEl.style.background = 'rgba(0, 198, 255, 0.2)';
+            }
+        };
+        
+        function renderClusters(data) {
+            if (!data.tickers || data.tickers.length === 0) return;
+            
+            // Очистка графика
+            chart.innerHTML = '';
+            clusterInfo.innerHTML = '';
+            
+            // Группировка по кластерам
+            const clusters = {};
+            for (let i = 0; i < data.tickers.length; i++) {
+                const clusterId = data.labels[i];
+                if (!clusters[clusterId]) clusters[clusterId] = [];
+                clusters[clusterId].push({
+                    ticker: data.tickers[i],
+                    x: data.features_2d[i][0],
+                    y: data.features_2d[i][1]
+                });
+            }
+            
+            // Нормализация координат
+            const allPoints = Object.values(clusters).flat();
+            const xs = allPoints.map(p => p.x);
+            const ys = allPoints.map(p => p.y);
+            const minX = Math.min(...xs);
+            const maxX = Math.max(...xs);
+            const minY = Math.min(...ys);
+            const maxY = Math.max(...ys);
+            
+            // Отображение точек
+            Object.entries(clusters).forEach(([clusterId, points]) => {
+                points.forEach(point => {
+                    const normX = 50 + ((point.x - minX) / (maxX - minX + 0.001)) * 45;
+                    const normY = 95 - ((point.y - minY) / (maxY - minY + 0.001)) * 40;
+                    
+                    const pointEl = document.createElement('div');
+                    pointEl.className = `chart-point cluster-${clusterId}`;
+                    pointEl.textContent = point.ticker;
+                    pointEl.style.left = `${normX}%`;
+                    pointEl.style.top = `${normY}%`;
+                    pointEl.title = `${point.ticker} - Кластер ${clusterId}`;
+                    
+                    chart.appendChild(pointEl);
+                });
+            });
+            
+            // Карточки кластеров
+            Object.entries(clusters).forEach(([clusterId, points]) => {
+                const card = document.createElement('div');
+                card.className = 'cluster-card';
+                card.innerHTML = `
+                    <div class="cluster-title">Кластер ${clusterId}</div>
+                    <div style="font-size: 2.2em; margin: 8px 0; color: ${getClusterColor(clusterId)}">${points.length}</div>
+                    <div class="ticker-list">
+                        ${points.slice(0, 6).map(p => `<span class="ticker-badge">${p.ticker}</span>`).join('')}
+                        ${points.length > 6 ? `<span class="ticker-badge" style="background:#555">+${points.length - 6}</span>` : ''}
+                    </div>
+                `;
+                clusterInfo.appendChild(card);
+            });
+            
+            // Убираем индикатор загрузки
+            if (loadingEl) loadingEl.remove();
+        }
+        
+        function getClusterColor(clusterId) {
+            const colors = [
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
+                '#FFEAA7', '#A29BFE', '#FD79A8', '#6C5CE7'
+            ];
+            return colors[clusterId % colors.length];
+        }
+    </script>
+</body>
+</html>
