@@ -45,7 +45,7 @@ services:
     container_name: flink-jobmanager
     ports:
       - "8081:8081"   # Веб-интерфейс Flink
-    command: jobmanager
+    command: sh /scripts/submit-job.sh
     environment:
       JOB_MANAGER_RPC_ADDRESS: jobmanager
       PYFLINK_CLIENT_EXECUTABLE: "/usr/local/bin/python3.11"
@@ -53,7 +53,8 @@ services:
         classloader.resolve-order: parent-first
     volumes:
       # Монтируем коннектор Kafka напрямую в папку lib
-      - ./flink/flink-sql-connector-kafka-3.2.0-1.19.jar:/opt/flink/lib/flink-sql-connector-kafka-3.2.0-1.19.jar
+      - ./bin/flink-sql-connector-kafka-3.2.0-1.19.jar:/opt/flink/lib/flink-sql-connector-kafka-3.2.0-1.19.jar
+      - ./flink:/scripts
 
   # Flink TaskManager
   taskmanager:
@@ -67,4 +68,4 @@ services:
       TASK_MANAGER_NUMBER_OF_TASK_SLOTS: 2
     volumes:
       # Монтируем коннектор Kafka напрямую в папку lib
-      - ./flink/flink-sql-connector-kafka-3.2.0-1.19.jar:/opt/flink/lib/flink-sql-connector-kafka-3.2.0-1.19.jar
+      - ./bin/flink-sql-connector-kafka-3.2.0-1.19.jar:/opt/flink/lib/flink-sql-connector-kafka-3.2.0-1.19.jar
