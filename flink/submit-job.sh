@@ -1,7 +1,6 @@
 #!/bin/bash
 # submit-job.sh - Отправка PyFlink job в кластер Flink
 
-set -e
 /docker-entrypoint.sh jobmanager &
 
 # Проверка готовности Flink (ожидание до 60 секунд)
